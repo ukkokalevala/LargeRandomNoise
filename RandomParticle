@@ -1,0 +1,57 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include "SimplexNoise.h"
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET    -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+#define SOUND_SENSOR_PIN 2  // Change this to your KY-038 sensor pin
+
+SimplexNoise noise;
+
+void setup() {
+    Wire.begin(7, 6);
+    pinMode(SOUND_SENSOR_PIN, INPUT);
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println(F("SSD1306 allocation failed"));
+        for (;;);
+    }
+    display.clearDisplay();
+    Serial.begin(115200);
+}
+
+// Function to draw bigger particles
+void drawParticle(int x, int y, int size) {
+    for (int dx = -size; dx <= size; dx++) {
+        for (int dy = -size; dy <= size; dy++) {
+            if (dx * dx + dy * dy <= size * size) { // Circle shape
+                display.drawPixel(x + dx, y + dy, SSD1306_WHITE);
+            }
+        }
+    }
+}
+
+void loop() {
+    display.clearDisplay();
+
+    int soundLevel = analogRead(SOUND_SENSOR_PIN); // Read sensor
+    soundLevel = map(soundLevel, 0, 4095, 1, 5); // Map to particle size
+
+    Serial.println(soundLevel); // Debugging
+
+    for (int i = 0; i < 30; i++) {
+        float noiseX = noise.noise(i * 0.2, millis() * 0.0005);
+        float noiseY = noise.noise(i * 0.3, millis() * 0.0007);
+
+        int x = (SCREEN_WIDTH / 2) + (noiseX * (SCREEN_WIDTH / 2));
+        int y = (SCREEN_HEIGHT / 2) + (noiseY * (SCREEN_HEIGHT / 2));
+
+        drawParticle(x, y, soundLevel); // Bigger with louder sound
+    }
+
+    display.display();
+    delay(50); // Adjust animation speed
+}
